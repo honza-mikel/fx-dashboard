@@ -1,8 +1,8 @@
 """Forex news bot: ForexFactory kalendář -> Claude -> Discord.
 
 Použití:
-    python bot.py --mode morning          # přehled 08:00–20:00 dnes
-    python bot.py --mode evening          # přehled 20:00 dnes – 08:00 zítra
+    python bot.py --mode morning          # odesílá se v 06:00, přehled 06:00–22:00 dnes
+    python bot.py --mode evening          # odesílá se ve 20:00, přehled 22:00 dnes – 06:00 zítra
     python bot.py --mode auto             # podle plánovaného času (GitHub Actions)
     python bot.py --mode alert            # upozornění ~15 min před High Impact zprávou
     python bot.py --mode alert --dry-run --no-ai --now 2026-10-21T07:45
@@ -39,6 +39,13 @@ ALERT_WINDOW_MIN = int(os.getenv("ALERT_WINDOW_MIN") or 20)  # upozorni, když z
 ALERT_PING = os.getenv("ALERT_PING") or ""                 # např. @here pro notifikaci na mobil
 MODEL = os.getenv("CLAUDE_MODEL") or "claude-haiku-5-5"
 SEND_EMPTY = (os.getenv("SEND_EMPTY") or "true").lower() == "true"
+
+# Seance (místní čas). Denní 06:00–22:00, noční 22:00–06:00.
+DAY_START = 6
+NIGHT_START = 22
+MORNING_SEND_HOUR = 6    # kdy se posílá přehled denní seance
+EVENING_SEND_HOUR = 20   # kdy se posílá přehled noční seance
+# Při změně časů odesílání uprav i řádky cron v .github/workflows/notify.yml
 
 COLOR_MORNING = 0x1F5AA6  # tmavší modrá
 COLOR_EVENING = 0x1F5AA6  # tmavší modrá
@@ -294,14 +301,14 @@ def session_window(mode, now):
     today = now.astimezone(TZ).date()
     at = lambda d, h: datetime(d.year, d.month, d.day, h, tzinfo=TZ)
     if mode == "morning":
-        return at(today, 8), at(today, 20), "☀️ Denní seance", COLOR_MORNING
-    return at(today, 20), at(today + timedelta(days=1), 8), "🌙 Noční seance", COLOR_EVENING
+        return at(today, DAY_START), at(today, NIGHT_START), "☀️ Denní seance", COLOR_MORNING
+    return at(today, NIGHT_START), at(today + timedelta(days=1), DAY_START), "🌙 Noční seance", COLOR_EVENING
 
 
 def resolve_auto_mode(now):
     """GitHub Actions spouští cron v UTC. Kvůli letnímu/zimnímu času máme 2 crony
     pro každé upozornění a podle *plánovaného* času (ne skutečného, Actions mívá
-    zpoždění) vybereme ten, který odpovídá 8:00 / 20:00 místního času."""
+    zpoždění) vybereme ten, který odpovídá 6:00 / 20:00 místního času."""
     schedule = os.getenv("SCHEDULE", "")  # např. "0 6 * * *"
     if not schedule:
         hour = now.astimezone(TZ).hour
@@ -309,7 +316,7 @@ def resolve_auto_mode(now):
         minute, utc_hour = int(schedule.split()[0]), int(schedule.split()[1])
         planned = now.replace(hour=utc_hour, minute=minute, second=0, microsecond=0)
         hour = planned.astimezone(TZ).hour
-    return {8: "morning", 20: "evening"}.get(hour)
+    return {MORNING_SEND_HOUR: "morning", EVENING_SEND_HOUR: "evening"}.get(hour)
 
 
 def run_session(mode, now, args):
@@ -403,7 +410,7 @@ def main():
     p.add_argument("--dry-run", action="store_true", help="nic neposílat, jen vypsat")
     p.add_argument("--no-ai", action="store_true", help="bez Claude, jen seznam událostí")
     p.add_argument("--now", default=os.getenv("BOT_NOW") or None,
-                   help="simulovaný čas pro test, např. 2026-10-19T08:00")
+                   help="simulovaný čas pro test, např. 2026-10-19T06:00")
     args = p.parse_args()
 
     now = datetime.now(timezone.utc)
@@ -419,7 +426,7 @@ def main():
 
     mode = args.mode if args.mode != "auto" else resolve_auto_mode(now)
     if mode is None:
-        print("Teď není 8:00 ani 20:00 místního času – končím.")
+        print("Teď není čas odeslání přehledu (6:00 / 20:00 místního času) – končím.")
         return
     run_session(mode, now, args)
 
