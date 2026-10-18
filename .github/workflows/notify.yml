@@ -1,0 +1,40 @@
+name: Forex News Alerts
+
+on:
+  schedule:
+    # Cron běží v UTC. Pro každé upozornění jsou dva časy (letní/zimní čas),
+    # bot.py sám pozná, který z nich odpovídá 8:00 / 20:00 v Praze.
+    - cron: "0 6 * * *"   # 8:00 letní čas (CEST)
+    - cron: "0 7 * * *"   # 8:00 zimní čas (CET)
+    - cron: "0 18 * * *"  # 20:00 letní čas
+    - cron: "0 19 * * *"  # 20:00 zimní čas
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "morning / evening"
+        required: true
+        default: morning
+        type: choice
+        options: [morning, evening]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run bot
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          SCHEDULE: ${{ github.event.schedule }}
+          TIMEZONE: ${{ vars.TIMEZONE || 'Europe/Prague' }}
+          MIN_IMPACT: ${{ vars.MIN_IMPACT || 'Medium' }}
+          CURRENCIES: ${{ vars.CURRENCIES }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL || 'claude-opus-5-5' }}
+        run: python bot.py --mode ${{ inputs.mode || 'auto' }}
