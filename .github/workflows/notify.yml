@@ -16,6 +16,10 @@ on:
         default: morning
         type: choice
         options: [morning, evening]
+      now:
+        description: "Test: simulovaný čas, např. 2026-10-19T08:00 (prázdné = teď)"
+        required: false
+        type: string
 
 jobs:
   notify:
@@ -38,4 +42,5 @@ jobs:
           MIN_IMPACT: ${{ vars.MIN_IMPACT }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
           SEND_EMPTY: ${{ vars.SEND_EMPTY }}
+          BOT_NOW: ${{ inputs.now }}
         run: python bot.py --mode ${{ inputs.mode || 'auto' }}
