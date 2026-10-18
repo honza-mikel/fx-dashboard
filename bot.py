@@ -322,8 +322,10 @@ def resolve_auto_mode(now):
 def run_session(mode, now, args):
     start, end, label, color = session_window(mode, now)
     events = filter_events(fetch_events(), start, end, MIN_IMPACT)
-    title = f"{label} • {start:%d.%m. %H:%M} – {end:%d.%m. %H:%M}"
-    print(f"{title}: {len(events)} událostí")
+    # Nadpis embedu na Discordu neumí zalomit řádek, proto je datum jako první tučný řádek textu
+    title = label
+    period = f"**{start:%d.%m. %H:%M} – {end:%d.%m. %H:%M}**"
+    print(f"{title} {period}: {len(events)} událostí")
 
     if not events:
         if not SEND_EMPTY:
@@ -339,8 +341,9 @@ def run_session(mode, now, args):
             print(f"AI selhalo ({e}), posílám prostý seznam", file=sys.stderr)
             text = plain_list(events)
 
+    text = f"{period}\n\n{text}"
     if args.dry_run:
-        print(f"[barva {color:#08x}]\n{text}")
+        print(f"[barva {color:#08x}] {title}\n{text}")
     else:
         send_discord(title, text, color)
         print("Odesláno na Discord.")
