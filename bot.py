@@ -44,6 +44,7 @@ COLOR_MORNING = 0xF1C40F  # žlutá
 COLOR_EVENING = 0x9B59B6  # fialová
 COLOR_ALERT = 0xE74C3C    # červená
 
+TITLE_PREFIX = ""  # při testu se simulovaným časem "🧪 TEST • "
 STATE_FILE = Path(__file__).parent / "state" / "alerted.json"
 SSL_CTX = ssl.create_default_context(cafile=certifi.where())
 
@@ -188,7 +189,7 @@ def send_discord(title, description, color, content=""):
     for i, chunk in enumerate(chunks):
         embed = {"description": chunk, "color": color}
         if i == 0:
-            embed["title"] = title
+            embed["title"] = (TITLE_PREFIX + title)[:256]
         if i == len(chunks) - 1:
             embed["footer"] = {"text": "Zdroj: ForexFactory • časy: " + str(TZ)}
         body = {"username": "Forex News Bot", "embeds": [embed]}
@@ -305,7 +306,8 @@ def run_alert(now, args):
                 state[event_key(ev)] = ev["date"]
             print(f"Odesláno upozornění: {names}")
 
-    if not args.dry_run:
+    # Test se simulovaným časem nic neukládá, aby nezablokoval skutečné upozornění
+    if not args.dry_run and not args.now:
         save_state(state, now)
 
 
@@ -314,12 +316,16 @@ def main():
     p.add_argument("--mode", choices=["morning", "evening", "auto", "alert"], default="auto")
     p.add_argument("--dry-run", action="store_true", help="nic neposílat, jen vypsat")
     p.add_argument("--no-ai", action="store_true", help="bez Claude, jen seznam událostí")
-    p.add_argument("--now", help="simulovaný čas pro test, např. 2026-10-21T07:45")
+    p.add_argument("--now", default=os.getenv("BOT_NOW") or None,
+                   help="simulovaný čas pro test, např. 2026-10-19T08:00")
     args = p.parse_args()
 
     now = datetime.now(timezone.utc)
     if args.now:
-        now = datetime.fromisoformat(args.now).replace(tzinfo=TZ).astimezone(timezone.utc)
+        now = datetime.fromisoformat(args.now.strip()).replace(tzinfo=TZ).astimezone(timezone.utc)
+        global TITLE_PREFIX
+        TITLE_PREFIX = "🧪 TEST • "
+        print(f"Simulovaný čas: {now.astimezone(TZ):%d.%m.%Y %H:%M}")
 
     if args.mode == "alert":
         run_alert(now, args)
