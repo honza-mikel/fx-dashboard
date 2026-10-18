@@ -47,6 +47,11 @@ MORNING_SEND_HOUR = 6    # kdy se posílá přehled denní seance
 EVENING_SEND_HOUR = 20   # kdy se posílá přehled noční seance
 # Při změně časů odesílání uprav i řádky cron v .github/workflows/notify.yml
 
+# Dny, kdy se přehled posílá automaticky (0 = pondělí ... 6 = neděle). Přes víkend zprávy nejsou:
+# ranní přehled po–pá, večerní ne–čt (v pátek večer a v sobotu nic, první v neděli ve 20:00).
+MORNING_DAYS = {0, 1, 2, 3, 4}
+EVENING_DAYS = {6, 0, 1, 2, 3}
+
 COLOR_MORNING = 0x1F5AA6  # tmavší modrá
 COLOR_EVENING = 0x1F5AA6  # tmavší modrá
 COLOR_ALERT = 0xE74C3C    # červená
@@ -431,6 +436,12 @@ def main():
     if mode is None:
         print("Teď není čas odeslání přehledu (6:00 / 20:00 místního času) – končím.")
         return
+    # Víkendová pauza platí jen pro automatické (plánované) spuštění, ruční test projde vždy
+    if args.mode == "auto":
+        weekday = now.astimezone(TZ).weekday()
+        if weekday not in (MORNING_DAYS if mode == "morning" else EVENING_DAYS):
+            print("Víkend – přehled se dnes neposílá.")
+            return
     run_session(mode, now, args)
 
 
