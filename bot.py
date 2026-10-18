@@ -54,8 +54,8 @@ a kvůli celkové náladě na trhu (risk-on/risk-off), která hýbe i AUD/CAD. \
 AUD/CAD je pár dvou komoditních měn: AUD citlivý na Čínu, kovy a risk sentiment, \
 CAD na ropu. Zlato reaguje na USD, výnosy dluhopisů, očekávání sazeb Fedu a risk-off nálady."""
 
-UP = "🟩 ⬆️"    # pár roste (zelená)
-DOWN = "🟥 ⬇️"  # pár klesá (červená)
+UP = "⬆️ 🟩"    # pár roste (zelená)
+DOWN = "⬇️ 🟥"  # pár klesá (červená)
 
 IMPACT_RULES = f"""
 Jak určit směr ({UP} = pár roste, {DOWN} = pár klesá):
@@ -91,15 +91,22 @@ Formát:
 
 **Shrnutí:** 1–2 věty, jak rušné období to je a jestli čekat pohyb na AUD/CAD a XAU/USD.
 
-Pak každou 🔴 High událost (zprávy stejné měny ve stejný čas, např. CPI m/m + Median + Trimmed, \
-spoj do jednoho bloku):
+Pak každou 🔴 High událost. Zprávy stejné měny ve stejný čas (např. CPI m/m + Median + Trimmed) \
+spoj do jednoho bloku, ale každou z nich napiš jako samostatnou odrážku:
 
-🔴 **HH:MM · MĚNA · Název**
-Forecast X | Previous Y
-(2–3 krátké odrážky, každá max. jeden řádek, cca 12 slov:)
+🔴 **HH:MM · MĚNA · Společný název** (např. CPI)
+- **Hlavní zpráva** · Forecast X | Previous Y
+- Další zpráva · Forecast X | Previous Y
+- Další zpráva · Forecast X | Previous Y
+
+Tučně je jen zpráva, která má v datech "hlavni": true, ostatní normálním písmem. \
+Hlavní zprávu dej jako první odrážku. Pokud je ve skupině jen jedna zpráva, napiš ji také \
+jako tučnou odrážku.
+
+Pod seznam zpráv dej krátký popis:
+(přesně 2 krátké odrážky, každá max. jeden řádek, cca 12 slov:)
 - Co měří: …
-- Očekávání: … (porovnej Forecast s Previous, např. „zrychlení z -0,1 % na 0,2 %“)
-- Proč teď: … (vliv na centrální banku a sazby)
+- Dopad na sazby: … (jak výsledek ovlivní rozhodnutí centrální banky o úrokových sazbách)
 
 {IMPACT_BLOCK}
 {IMPACT_BLOCK_NOTE}
@@ -118,8 +125,9 @@ ALERT_PROMPT = TRADER_PROFILE + IMPACT_RULES + f"""
 
 Za pár minut vyjde High Impact zpráva (případně víc zpráv najednou). Napiš v češtině pro Discord:
 
-2–3 krátké odrážky začínající „- “, každá max. jeden řádek (cca 12 slov): co zpráva měří, \
-co trh čeká (Forecast vs. Previous), proč je teď důležitá.
+Přesně 2 krátké odrážky, každá max. jeden řádek (cca 12 slov):
+- Co měří: …
+- Dopad na sazby: … (jak výsledek ovlivní rozhodnutí centrální banky o úrokových sazbách)
 
 {IMPACT_BLOCK}
 {IMPACT_BLOCK_NOTE}
@@ -180,7 +188,33 @@ def filter_events(events, start, end, min_impact):
     return sorted(out, key=lambda e: (e["local"], -IMPACT_RANK[e["impact"]]))
 
 
+# Nejdůležitější zpráva ve skupině (stejný čas a měna) se píše tučně. Pořadí = priorita.
+MAIN_EVENTS = [
+    "Federal Funds Rate", "Overnight Rate", "Cash Rate",
+    "Non-Farm Employment Change", "Core CPI m/m", "Trimmed Mean CPI q/q",
+    "CPI m/m", "CPI q/q", "CPI y/y", "Employment Change",
+    "Advance GDP q/q", "GDP q/q", "GDP m/m", "Unemployment Rate",
+    "Core Retail Sales m/m", "Retail Sales m/m",
+]
+
+
+def main_event_keys(events):
+    groups = {}
+    for ev in events:
+        groups.setdefault((ev["local"], ev["country"]), []).append(ev)
+    keys = set()
+    for group in groups.values():
+        def priority(ev):
+            rank = MAIN_EVENTS.index(ev["title"]) if ev["title"] in MAIN_EVENTS else len(MAIN_EVENTS)
+            return (rank, -IMPACT_RANK.get(ev["impact"], 0))
+        keys.add(event_key(min(group, key=priority)))
+    return keys
+
+
 def plain_list(events):
+    main = main_event_keys(events)
+    # Hlavní zpráva skupiny jako první
+    events = sorted(events, key=lambda e: (e["local"], e["country"], event_key(e) not in main))
     lines = []
     for ev in events:
         extra = []
@@ -189,14 +223,16 @@ def plain_list(events):
         if ev.get("previous"):
             extra.append(f"Previous {ev['previous']}")
         suffix = f" · {' | '.join(extra)}" if extra else ""
+        title = f"**{ev['title']}**" if event_key(ev) in main else ev["title"]
         lines.append(
-            f"{IMPACT_ICON.get(ev['impact'], '')} **{ev['local']:%H:%M}** "
-            f"`{ev['country']}` {ev['title']}{suffix}"
+            f"{IMPACT_ICON.get(ev['impact'], '')} {ev['local']:%H:%M} "
+            f"`{ev['country']}` {title}{suffix}"
         )
     return "\n".join(lines)
 
 
 def events_payload(events):
+    main = main_event_keys(events)
     return json.dumps([
         {
             "cas": f"{e['local']:%a %d.%m. %H:%M}",
@@ -205,6 +241,7 @@ def events_payload(events):
             "dopad": e["impact"],
             "forecast": e.get("forecast") or None,
             "previous": e.get("previous") or None,
+            "hlavni": event_key(e) in main,
         }
         for e in events
     ], ensure_ascii=False, indent=1)
