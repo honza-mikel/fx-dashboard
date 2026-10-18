@@ -6,6 +6,11 @@ on:
     # když do ní zbývá 20 minut nebo méně. Zpožděný běh dožene ten další.
     - cron: "2-59/10 * * * *"
   workflow_dispatch:
+    inputs:
+      now:
+        description: "Test: simulovaný čas, např. 2026-10-19T14:12 (prázdné = teď)"
+        required: false
+        type: string
 
 permissions:
   contents: write   # bot si do repozitáře ukládá, o kterých zprávách už upozornil
@@ -35,6 +40,7 @@ jobs:
           ALERT_WINDOW_MIN: ${{ vars.ALERT_WINDOW_MIN }}
           ALERT_PING: ${{ vars.ALERT_PING }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }}
+          BOT_NOW: ${{ inputs.now }}
         run: python bot.py --mode alert
       - name: Save alert state
         run: |
