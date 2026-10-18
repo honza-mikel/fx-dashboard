@@ -54,8 +54,8 @@ a kvůli celkové náladě na trhu (risk-on/risk-off), která hýbe i AUD/CAD. \
 AUD/CAD je pár dvou komoditních měn: AUD citlivý na Čínu, kovy a risk sentiment, \
 CAD na ropu. Zlato reaguje na USD, výnosy dluhopisů, očekávání sazeb Fedu a risk-off nálady."""
 
-UP = "🟩 ▲"    # pár roste (zelená)
-DOWN = "🟥 ▼"  # pár klesá (červená)
+UP = "🟩 ⬆️"    # pár roste (zelená)
+DOWN = "🟥 ⬇️"  # pár klesá (červená)
 
 IMPACT_RULES = f"""
 Jak určit směr ({UP} = pár roste, {DOWN} = pár klesá):
@@ -75,18 +75,17 @@ XAU/USD vynech, pokud nejde o USD zprávu.)
 
 U projevů, zasedání a tiskových konferencí bez Forecastu (např. projev guvernéra RBA, BoC \
 nebo předsedy Fedu) napiš v bloku místo „Vyšší než očekávaný“ **Jestřábí tón** a místo \
-„Nižší než očekávaný“ **Holubičí tón**. V popisu nad blokem pak navíc vysvětli:
-- co by znamenal jestřábí tón (náznaky vyšších sazeb nebo jejich delšího držení, obavy \
-z inflace) a co holubičí tón (náznaky snižování sazeb, obavy o růst a zaměstnanost),
-- na co se trh u tohoto projevu zaměří (např. inflace, příští zasedání, výhled sazeb),
-- jaký možný dopad by každý tón měl na měnu a na AUD/CAD (u Fedu i na XAU/USD). Blok je vždy samostatný \
+„Nižší než očekávaný“ **Holubičí tón**. Odrážky nad blokem pak budou (každá max. jeden řádek):
+- Jestřábí tón: co by znamenal (např. náznak vyšších nebo déle držených sazeb).
+- Holubičí tón: co by znamenal (např. náznak snižování sazeb, obavy o růst).
+- Trh sleduje: na co se u projevu zaměřit (inflace, příští zasedání, výhled sazeb). Blok je vždy samostatný \
 odstavec s prázdným řádkem nad i pod a každý řádek začíná znakem >."""
 
 SESSION_PROMPT = TRADER_PROFILE + IMPACT_RULES + f"""
 
 Dostaneš seznam nadcházejících ekonomických událostí z ForexFactory (časy jsou v místním čase \
 tradera). Napiš přehled v češtině pro Discord. Používej jen Markdown pro Discord (tučné písmo, \
-citace >), žádné tabulky ani nadpisy s #. Hodnoty označuj vždy anglicky Forecast a Previous.
+odrážky -, citace >), žádné tabulky ani nadpisy s #. Hodnoty označuj vždy anglicky Forecast a Previous.
 
 Formát:
 
@@ -97,9 +96,10 @@ spoj do jednoho bloku):
 
 🔴 **HH:MM · MĚNA · Název**
 Forecast X | Previous Y
-Popis ve 2–4 větách: co zpráva měří, co trh čeká (porovnej Forecast s Previous, např. \
-„čeká se zrychlení z -0,1 % na 0,2 %“), proč je teď důležitá pro centrální banku a sazby \
-a jak velký pohyb lze čekat při překvapení.
+(2–3 krátké odrážky, každá max. jeden řádek, cca 12 slov:)
+- Co měří: …
+- Očekávání: … (porovnej Forecast s Previous, např. „zrychlení z -0,1 % na 0,2 %“)
+- Proč teď: … (vliv na centrální banku a sazby)
 
 {IMPACT_BLOCK}
 {IMPACT_BLOCK_NOTE}
@@ -111,22 +111,22 @@ Pak 🟠 Medium události, jen jeden řádek na událost:
 Na konec, jen pokud je co říct, jeden řádek ⚠️ (shluk zpráv do 30 minut, projev guvernéra RBA, \
 BoC nebo Fedu, AUD a CAD zprávy ve stejný den).
 
-Chybějící Forecast nebo Previous vynech. Buď věcný, žádná obchodní doporučení \
-(nekupuj/neprodávej). Max. 3000 znaků."""
+Chybějící Forecast nebo Previous vynech. Buď stručný a věcný, žádná obchodní doporučení \
+(nekupuj/neprodávej). Max. 2500 znaků."""
 
 ALERT_PROMPT = TRADER_PROFILE + IMPACT_RULES + f"""
 
 Za pár minut vyjde High Impact zpráva (případně víc zpráv najednou). Napiš v češtině pro Discord:
 
-Popis ve 2–3 větách: co zpráva měří, co trh čeká (Forecast vs. Previous) a proč je to teď \
-důležité.
+2–3 krátké odrážky začínající „- “, každá max. jeden řádek (cca 12 slov): co zpráva měří, \
+co trh čeká (Forecast vs. Previous), proč je teď důležitá.
 
 {IMPACT_BLOCK}
 {IMPACT_BLOCK_NOTE}
 
 Jedna věta o možné volatilitě a rozšířeném spreadu.
 Hodnoty označuj anglicky Forecast a Previous. Žádné obchodní doporučení, žádné nadpisy, \
-max. 700 znaků."""
+max. 600 znaků."""
 
 
 # --- Data ---
