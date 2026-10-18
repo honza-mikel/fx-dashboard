@@ -17,7 +17,7 @@ on:
         type: choice
         options: [morning, evening]
       now:
-        description: "Test: YYYY-MM-DDTHH:MM"
+        description: "test: year-month-dayThour:minute"
         required: false
         type: string
 
