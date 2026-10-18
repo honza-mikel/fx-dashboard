@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       now:
-        description: "Test: simulovaný čas, např. 2026-10-19T14:12 (prázdné = teď)"
+        description: "Test: YYYY-MM-DDTHH:MM"
         required: false
         type: string
 
