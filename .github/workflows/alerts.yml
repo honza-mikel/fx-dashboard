@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       now:
-        description: "test: year-month-dayThour:minute"
+        description: "RRRR-MM-DDTHH:MM"
         required: false
         type: string
 
