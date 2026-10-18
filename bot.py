@@ -40,8 +40,8 @@ ALERT_PING = os.getenv("ALERT_PING") or ""                 # např. @here pro no
 MODEL = os.getenv("CLAUDE_MODEL") or "claude-haiku-5-5"
 SEND_EMPTY = (os.getenv("SEND_EMPTY") or "true").lower() == "true"
 
-COLOR_MORNING = 0x3498DB  # modrá
-COLOR_EVENING = 0x3498DB  # modrá
+COLOR_MORNING = 0x1F5AA6  # tmavší modrá
+COLOR_EVENING = 0x1F5AA6  # tmavší modrá
 COLOR_ALERT = 0xE74C3C    # červená
 
 TITLE_PREFIX = ""  # při testu se simulovaným časem "🧪 TEST • "
@@ -54,21 +54,39 @@ a kvůli celkové náladě na trhu (risk-on/risk-off), která hýbe i AUD/CAD. \
 AUD/CAD je pár dvou komoditních měn: AUD citlivý na Čínu, kovy a risk sentiment, \
 CAD na ropu. Zlato reaguje na USD, výnosy dluhopisů, očekávání sazeb Fedu a risk-off nálady."""
 
-IMPACT_RULES = """
-Jak určit směr šipek (⬆️ = pár roste, ⬇️ = pár klesá):
-- Lepší data pro AUD (vyšší růst, inflace, zaměstnanost, jestřábí RBA) = silnější AUD = AUD/CAD ⬆️.
-- Lepší data pro CAD (totéž pro Kanadu, jestřábí BoC) = silnější CAD = AUD/CAD ⬇️.
-- Lepší data pro USD (vyšší CPI, NFP, jestřábí Fed) = silnější USD = XAU/USD ⬇️ a AUD/CAD mírně ⬇️ (AUD je na dolar citlivější než CAD).
-- U ukazatelů, kde je nižší hodnota lepší (míra nezaměstnanosti, žádosti o podporu), je směr opačný.
-- U projevů a zasedání bez Forecastu použij místo „nad/pod Forecast“ „jestřábí / holubičí tón“.
-- XAU/USD uváděj jen u USD zpráv.
-- V šabloně „⬆️/⬇️“ znamená: napiš jen jednu správnou šipku."""
+UP = "🟩 ▲"    # pár roste (zelená)
+DOWN = "🟥 ▼"  # pár klesá (červená)
 
-SESSION_PROMPT = TRADER_PROFILE + IMPACT_RULES + """
+IMPACT_RULES = f"""
+Jak určit směr ({UP} = pár roste, {DOWN} = pár klesá):
+- Lepší data pro AUD (vyšší růst, inflace, zaměstnanost, jestřábí RBA) = silnější AUD = AUD/CAD {UP}.
+- Lepší data pro CAD (totéž pro Kanadu, jestřábí BoC) = silnější CAD = AUD/CAD {DOWN}.
+- Lepší data pro USD (vyšší CPI, NFP, jestřábí Fed) = silnější USD = XAU/USD {DOWN} a AUD/CAD mírně {DOWN} \
+(AUD je na dolar citlivější než CAD).
+- U ukazatelů, kde je nižší hodnota lepší (míra nezaměstnanosti, žádosti o podporu), je směr opačný.
+- XAU/USD uváděj jen u USD zpráv.
+- Používej přesně tyto značky: {UP} pro růst a {DOWN} pro pokles. Žádné jiné šipky."""
+
+IMPACT_BLOCK = f"""> **Vyšší než očekávaný:** AUD/CAD {DOWN} · XAU/USD {DOWN}
+> **Nižší než očekávaný:** AUD/CAD {UP} · XAU/USD {UP}"""
+
+IMPACT_BLOCK_NOTE = """(Ukázka je pro USD zprávu typu CPI nebo NFP; u jiných zpráv urči směr podle pravidel výše. \
+XAU/USD vynech, pokud nejde o USD zprávu.)
+
+U projevů, zasedání a tiskových konferencí bez Forecastu (např. projev guvernéra RBA, BoC \
+nebo předsedy Fedu) napiš v bloku místo „Vyšší než očekávaný“ **Jestřábí tón** a místo \
+„Nižší než očekávaný“ **Holubičí tón**. V popisu nad blokem pak navíc vysvětli:
+- co by znamenal jestřábí tón (náznaky vyšších sazeb nebo jejich delšího držení, obavy \
+z inflace) a co holubičí tón (náznaky snižování sazeb, obavy o růst a zaměstnanost),
+- na co se trh u tohoto projevu zaměří (např. inflace, příští zasedání, výhled sazeb),
+- jaký možný dopad by každý tón měl na měnu a na AUD/CAD (u Fedu i na XAU/USD). Blok je vždy samostatný \
+odstavec s prázdným řádkem nad i pod a každý řádek začíná znakem >."""
+
+SESSION_PROMPT = TRADER_PROFILE + IMPACT_RULES + f"""
 
 Dostaneš seznam nadcházejících ekonomických událostí z ForexFactory (časy jsou v místním čase \
 tradera). Napiš přehled v češtině pro Discord. Používej jen Markdown pro Discord (tučné písmo, \
-odrážky), žádné tabulky ani nadpisy s #. Hodnoty označuj vždy anglicky Forecast a Previous.
+citace >), žádné tabulky ani nadpisy s #. Hodnoty označuj vždy anglicky Forecast a Previous.
 
 Formát:
 
@@ -76,30 +94,39 @@ Formát:
 
 Pak každou 🔴 High událost (zprávy stejné měny ve stejný čas, např. CPI m/m + Median + Trimmed, \
 spoj do jednoho bloku):
+
 🔴 **HH:MM · MĚNA · Název**
 Forecast X | Previous Y
-1–2 krátké věty: co zpráva měří a proč je teď důležitá.
-Nad Forecast: AUD/CAD ⬆️/⬇️ · XAU/USD ⬆️/⬇️ (XAU jen u USD)
-Pod Forecast: AUD/CAD ⬆️/⬇️ · XAU/USD ⬆️/⬇️
+Popis ve 2–4 větách: co zpráva měří, co trh čeká (porovnej Forecast s Previous, např. \
+„čeká se zrychlení z -0,1 % na 0,2 %“), proč je teď důležitá pro centrální banku a sazby \
+a jak velký pohyb lze čekat při překvapení.
+
+{IMPACT_BLOCK}
+{IMPACT_BLOCK_NOTE}
 
 Pak 🟠 Medium události, jen jeden řádek na událost:
-🟠 **HH:MM · MĚNA · Název** · Forecast X | Previous Y · nad: AUD/CAD ⬆️/⬇️
+🟠 **HH:MM · MĚNA · Název** · Forecast X | Previous Y · vyšší než očekávaný: AUD/CAD {UP} nebo {DOWN}
+(u projevu bez Forecastu: · jestřábí tón: AUD/CAD {UP} nebo {DOWN})
 
 Na konec, jen pokud je co říct, jeden řádek ⚠️ (shluk zpráv do 30 minut, projev guvernéra RBA, \
 BoC nebo Fedu, AUD a CAD zprávy ve stejný den).
 
-Chybějící Forecast nebo Previous vynech. Buď stručný a věcný, žádná obchodní doporučení \
-(nekupuj/neprodávej). Max. 2500 znaků."""
+Chybějící Forecast nebo Previous vynech. Buď věcný, žádná obchodní doporučení \
+(nekupuj/neprodávej). Max. 3000 znaků."""
 
-ALERT_PROMPT = TRADER_PROFILE + IMPACT_RULES + """
+ALERT_PROMPT = TRADER_PROFILE + IMPACT_RULES + f"""
 
 Za pár minut vyjde High Impact zpráva (případně víc zpráv najednou). Napiš v češtině pro Discord:
-1–2 krátké věty: o co jde a proč je to teď důležité.
-Nad Forecast: AUD/CAD ⬆️/⬇️ · XAU/USD ⬆️/⬇️ (XAU jen u USD)
-Pod Forecast: AUD/CAD ⬆️/⬇️ · XAU/USD ⬆️/⬇️
+
+Popis ve 2–3 větách: co zpráva měří, co trh čeká (Forecast vs. Previous) a proč je to teď \
+důležité.
+
+{IMPACT_BLOCK}
+{IMPACT_BLOCK_NOTE}
+
 Jedna věta o možné volatilitě a rozšířeném spreadu.
 Hodnoty označuj anglicky Forecast a Previous. Žádné obchodní doporučení, žádné nadpisy, \
-max. 500 znaků."""
+max. 700 znaků."""
 
 
 # --- Data ---
